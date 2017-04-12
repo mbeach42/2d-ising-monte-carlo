@@ -29,7 +29,7 @@ end
     return div(E, 8)
 end
 
-@everywhere function MC_step!(config::Array{Int64,2},L::Int64, T::Float64, flipx::Int64, flipy::Int64,r::Float64 ) #Monte Carlo step
+@everywhere function MC_step!(config::Array{Int64,2}, L::Int64, T::Float64, flipx::Int64, flipy::Int64,r::Float64 ) #Monte Carlo step
     @inbounds config[flipx, flipy] *= -1 #randomly flip one spin
     deltaE = 1.*energy_singleflip(config, flipx, flipy, L) #compute energy of spin flip
     if deltaE > 0 && r > exp(-1.0/T*deltaE) #if spin flip is un-favourable, revert back
@@ -37,13 +37,15 @@ end
     end
 end
 
-@everywhere function MC_sweep!(config::Array{Int64,2}, T::Float64, L::Int64, flipx::Int64, flipy::Int64, r::Float64) #Sweep over L^2 MC steps
+@everywhere function MC_sweep!(config::Array{Int64,2}, T::Float64, L::Int64,
+    flipx::Int64, flipy::Int64, r::Float64) #Sweep over L^2 MC steps
     for i = 1:2*L^2
         MC_step!(config, L,  T, flipx, flipy, r)
     end
 end
 
-@everywhere function thermo_quantities(T::Float64, L::Int64, N_eq::Int64, N_steps::Int64)::Tuple{Float64,Float64,Float64,Float64}
+@everywhere function thermo_quantities(T::Float64, L::Int64, N_eq::Int64,
+  N_steps::Int64)::Tuple{Float64,Float64,Float64,Float64}
 
     config = random_config(L)
     E, phi = zeros(N_steps), zeros(N_steps)
@@ -73,6 +75,18 @@ end
     E, M, Cv, X = zeros(F), zeros(F), zeros(F), zeros(F)
 
     for j = 1:length(Ts)
+        E[j], M[j], Cv[j], X[j] = thermo_quantities(Ts[j], L, N_eq, N_steps)
+    end
+    return E, M, Cv, X
+end
+
+@everywhere function iterate_over_temperatures_parallel(Ts::Array{Float64,1}, L::Int64,
+    N_eq::Int64, N_steps::Int64)::Tuple{Array{Float64,1}, Array{Float64,1},Array{Float64,1},Array{Float64,1}}
+
+    F = length(Ts)
+    E, M, Cv, X = SharedArray(Float64, F),SharedArray(Float64, F),SharedArray(Float64, F),SharedArray(Float64, F)
+
+    @sync @parallel for j = 1:length(Ts)
         E[j], M[j], Cv[j], X[j] = thermo_quantities(Ts[j], L, N_eq, N_steps)
     end
     return E, M, Cv, X
