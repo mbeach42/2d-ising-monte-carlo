@@ -31,7 +31,7 @@ function plot_M(T_range, M)
     figure("M_plot", figsize=(10,4))
     xlabel("Temperature")
     ylabel("Magnetization")
-    plot(T_range, M, ".", color = "green");
+    plot(T_range, abs(M), ".", color = "green");
 end
 
 function plot_Cv(T_range, X)

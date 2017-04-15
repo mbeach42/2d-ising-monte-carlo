@@ -3,7 +3,7 @@ include("2d-ising-monte-carlo.jl")
 
 #Compile
 iterate_over_temperatures(Array(linspace(0.6, 0.8, 5)), 5, 5, 10)
-iterate_over_temperatures(Array(linspace(0.6, 4, 5)), 5, 10, 50)
+iterate_over_temperatures_parallel(Array(linspace(0.6, 4, 5)), 5, 10, 50)
 
 function timeit(T, L, N)
   time = zeros(10)
