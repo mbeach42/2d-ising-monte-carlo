@@ -23,7 +23,7 @@ end
 @fastmath @everywhere function energy_singleflip(M::Array{Int64,2},
                                                  i::Int64, j::Int64, L::Int64)::Int64 #energy of configuration
     @inbounds return -2*M[i,j]*( M[i, periodic_index(j+1, L)] + M[i, periodic_index(j-1, L)]
-                             + M[periodic_index(i+1, L), j] + M[periodic_index(i-1, L), j] )
+                               + M[periodic_index(i+1, L), j] + M[periodic_index(i-1, L), j] )
 end
 
 @fastmath @everywhere function energy(M::Array{Int64,2}, L::Int64)::Int64 #energy of configuration
@@ -101,7 +101,7 @@ end
                                                                   N_eq::Int64, N_steps::Int64)::Tuple{Array{Float64,1},Array{Float64,1},Array{Float64,1},Array{Float64,1}}
 
     F = length(Ts)
-    E, M, Cv, X = SharedArray(Float64,F), SharedArray(Float64,F), SharedArray(Float64,F), SharedArray(Float64,F)
+    E, M, Cv, X = SharedArray{Float64}(F),  SharedArray{Float64}(F), SharedArray{Float64}(F), SharedArray{Float64}(F)
 
     @inbounds @sync @parallel for j = 1:length(Ts)
          E[j], M[j], Cv[j], X[j] = thermo_quantities(Ts[j], L, N_eq, N_steps)
