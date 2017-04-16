@@ -1,5 +1,8 @@
 # A Metropolis Algorithm for the 2D Ising model
 # Currently limited by rand() and the time it takes to do energy_singleflip
+
+#using RandomNumbers.Xorshifts
+#r = Xoroshiro128Plus();
 #set_zero_subnormals(true)
 
 @fastmath @everywhere function random_config(L::Int64)::Array{Int64,2} #generate a random (L,L) matrix of +/-1
@@ -17,13 +20,12 @@ end
 end
 
 @fastmath @everywhere function magnetization(M::Array{Int64,2})::Int64
-    @inbounds return sum(M)
+    @inbounds return abs(sum(M))
 end
 
 @fastmath @everywhere function energy_singleflip(M::Array{Int64,2},
                                                  i::Int64, j::Int64, L::Int64)::Int64 #energy of configuration
-    @inbounds return -2*M[i,j]*( M[i, periodic_index(j+1, L)] + M[i, periodic_index(j-1, L)]
-                               + M[periodic_index(i+1, L), j] + M[periodic_index(i-1, L), j] )
+    @inbounds return -2*M[i,j]*( M[i, periodic_index(j+1, L)] + M[i, periodic_index(j-1, L)] + M[periodic_index(i+1, L), j] + M[periodic_index(i-1, L), j] )
 end
 
 @fastmath @everywhere function energy(M::Array{Int64,2}, L::Int64)::Int64 #energy of configuration
@@ -59,23 +61,19 @@ end
 
 @fastmath @everywhere function thermo_quantities(T::Float64, L::Int64,
                                                  N_eq::Int64, N_steps::Int64)::Tuple{Float64,Float64,Float64,Float64}
-
     config = random_config(L)
     E, phi = zeros(N_steps), zeros(N_steps)
-
     flipsx, flipsy, rs = rand(1:L, 2*L^2, N_steps+N_eq), rand(1:L, 2*L^2, N_steps+N_eq), rand(2*L^2, N_steps+N_eq)
     pre_exp = [exp(-4.0/T), exp(-8.0/T)]
 
     @inbounds for i = 1:N_eq #Run a few times to equilibriate
         MC_sweep!(config, T, L, pre_exp, flipsx[:, i], flipsy[:, i], rs[:, i])
     end
-
      @inbounds for i = 1:N_steps #Runs which will be included in the thermodynamic averages
         MC_sweep!(config, T, L, pre_exp, flipsx[:, N_eq+i], flipsy[:, N_eq+i], rs[:, N_eq+i])
         E[i] = energy(config, L)
         phi[i] = magnetization(config)
     end
-
     E_avg = sum(E)/(N_steps*L^2) #average energy at T
     M = sum(phi)/(N_steps*L^2) #average Mag at T
     Cv = (dot(E,E)/N_steps - sum(E)^2/N_steps^2)/(T^2)
@@ -83,13 +81,10 @@ end
     return E_avg, M, Cv, X
 end
 
-
 @fastmath @everywhere function iterate_over_temperatures(Ts::Array{Float64,1}, L::Int64,
                                                          N_eq::Int64, N_steps::Int64)::Tuple{Array{Float64,1},Array{Float64,1},Array{Float64,1},Array{Float64,1}}
-
     F = length(Ts)
     E, M, Cv, X = zeros(F), zeros(F), zeros(F), zeros(F)
-
     @inbounds for j = 1:length(Ts)
          E[j], M[j], Cv[j], X[j] = thermo_quantities(Ts[j], L, N_eq, N_steps)
     end
@@ -99,10 +94,8 @@ end
 @fastmath @everywhere function iterate_over_temperatures_parallel(Ts::Array{Float64,1},
                                                                   L::Int64,
                                                                   N_eq::Int64, N_steps::Int64)::Tuple{Array{Float64,1},Array{Float64,1},Array{Float64,1},Array{Float64,1}}
-
     F = length(Ts)
     E, M, Cv, X = SharedArray{Float64}(F),  SharedArray{Float64}(F), SharedArray{Float64}(F), SharedArray{Float64}(F)
-
     @inbounds @sync @parallel for j = 1:length(Ts)
          E[j], M[j], Cv[j], X[j] = thermo_quantities(Ts[j], L, N_eq, N_steps)
     end
