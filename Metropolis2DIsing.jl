@@ -62,14 +62,14 @@ end
 function thermo_quantities(T::Float64, L::Int64, N_eq::Int64, N_steps::Int64)::Tuple{Float64,Float64,Float64,Float64}
     config = random_config(L)
     E, phi = zeros(N_steps), zeros(N_steps)
-    flipsx, flipsy, rs = rand(1:L, 2*L^2, N_steps+N_eq), rand(1:L, 2*L^2, N_steps+N_eq), rand(2*L^2, N_steps+N_eq)
+    flips, rs = rand(1:L, 2*L^2, N_steps+N_eq, 2),  rand(2*L^2, N_steps+N_eq)
     pre_exp = [exp(-4.0/T), exp(-8.0/T)]
 
     @inbounds for i = 1:N_eq #Run a few times to equilibriate
-        mcsweep!(config, T, L, pre_exp, flipsx[:, i], flipsy[:, i], rs[:, i])
+        mcsweep!(config, T, L, pre_exp, flips[:,i, 1], flips[:, i,2], rs[:, i])
     end
      @inbounds for i = 1:N_steps #Runs which will be included in the thermodynamic averages
-        mcsweep!(config, T, L, pre_exp, flipsx[:, N_eq+i], flipsy[:, N_eq+i], rs[:, N_eq+i])
+        mcsweep!(config, T, L, pre_exp, flips[:, N_eq+i,1], flips[:, N_eq+i,2], rs[:, N_eq+i])
         E[i] = energy(config, L)
         phi[i] = magnetization(config)
     end
